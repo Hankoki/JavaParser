@@ -11,6 +11,7 @@ import java.util.Optional;
 import com.github.fantac.parser.ParsedInfo;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -47,12 +48,13 @@ public class MethodExtractor {
         FileInputStream in = new FileInputStream(fullPath);
         CompilationUnit cu = StaticJavaParser.parse(in);
         //获取被分析的包名
-        String packageName = cu.getPackageDeclaration().toString();
+        String packageName = cu.getPackageDeclaration().get().getNameAsString();
             for (ClassOrInterfaceDeclaration coid : cu.findAll(ClassOrInterfaceDeclaration.class)) {
                 ParsedInfo parsedInfo = new ParsedInfo();
                 //获取名字为main的方法的签名+方法体
-                List<MethodDeclaration> targetMethod = coid.getMethodsByName("main");
+                List<MethodDeclaration> targetMethod = coid.getMethodsByName(methodName);
                 String method = targetMethod.get(0).toString();
+                parsedInfo.setMethodName(methodName);
                 parsedInfo.setMethodBody(method);
 //                System.out.println(method);
                 //设置当前方法所在类的包声明
@@ -63,12 +65,12 @@ public class MethodExtractor {
 //                System.out.println("类名: " + className);
                 // 遍历并打印每个成员变量及其默认值（如果有的话）
                 for (FieldDeclaration field : coid.getFields()) {
-                    //field转为字符串后以分号结尾，去掉分号
+                    //field转为字符串后以分号结尾，去掉分号，从"="号区分开，仅取得成员变量签名
                     String fieldSignature = String.valueOf(field);
                     if (fieldSignature.endsWith(";")) {
-                        fieldSignature = fieldSignature.substring(0,fieldSignature.length()-1);
+                        fieldSignature = fieldSignature.substring(0,fieldSignature.length()-1).split("=")[0].trim();
                     }
-                    System.out.println(fieldSignature);
+//                    System.out.println(fieldSignature);
                     //获取field中的variable
                     for (VariableDeclarator variable : field.getVariables()) {
                         //获取初始值，有初始值则值设为初始值，没有初始值设为"noDefaultValue"
@@ -76,16 +78,18 @@ public class MethodExtractor {
                         if (initializer.isPresent()) {
                             Object defaultFieldValue = initializer.get();
                             parsedInfo.addDeclaredFieldMap(fieldSignature,defaultFieldValue);
-                            System.out.println("，默认值: " + initializer.get());
+//                            System.out.println("，默认值: " + initializer.get());
                         } else {
                             parsedInfo.addDeclaredFieldMap(fieldSignature,"noDefaultValue");
-                            System.out.println();  // 如果没有默认值，换行
+//                            System.out.println();  // 如果没有默认值，换行
                         }
                     }
                 }
                 this.infoList.add(parsedInfo);
             }
-        System.out.println(infoList);
+            for (ParsedInfo pi : infoList){
+                pi.displayParsedInfo();
+            }
         }
     }
 
