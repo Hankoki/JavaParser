@@ -18,17 +18,23 @@ public class DataProcessUtil {
     * @date: 2024/4/2
     */
     public static String[] extractClassAndMethod(String functionSignature) {
+        int expectedPartsLength =2;
+        String rightParenthesis=")";
         // 删除 "<" 和 ">" 字符
         functionSignature = functionSignature.substring(1, functionSignature.length() - 1);
         // 按 ":" 分割字符串
         String[] parts = functionSignature.split(":");
-        if (parts.length != 2) {
+        if (parts.length != expectedPartsLength) {
             // 无效的签名
             System.out.println("传入的签名不符合Soot签名格式，eg：<TestCaseDroid.test.CallGraph: void main(java.lang.String[])>");
             return null;
         }
-        // 抽取类名，去掉空白字符
-        String className = parts[0].trim();
+        //抽取包名.类名，去掉空白字符
+        String packageNameAndClassName = parts[0].trim();
+        int lastIndex = packageNameAndClassName.lastIndexOf(".");
+        //分离包名和类名
+        String className = packageNameAndClassName.substring(lastIndex + 1);
+        String packageName = packageNameAndClassName.substring(0, lastIndex);
         // 抽取方法名和参数类型
         String methodAndParams = parts[1].trim();
         // 分离“传入参数”和“返回值类型与函数名”
@@ -39,22 +45,22 @@ public class DataProcessUtil {
         String methodName = methodAndReturnType[1].trim();
         // 抽取传入参数
         String parameters;
-        if (!")".equals(methodAndParameters[1].trim())){
+        if (!rightParenthesis.equals(methodAndParameters[1].trim())){
             parameters = methodAndParameters[1].trim().split("\\)")[0].trim();
         }else{
             parameters = null;
         }
-        return new String[]{className, returnType,methodName,parameters};
+        return new String[]{packageName, className, returnType,methodName,parameters};
     }
     
     /** 
-    * @description: 将类名转变为类所在路径 
+    * @description: 将类名转变为类所在路径
     * @param: [inputString] 
     * @return: java.lang.String 
     * @author: FantaC 
     * @date: 2024/4/2
     */
-    public static String PathSeparatorReplacer(String inputString){
+    public static String pathSeparatorReplacer(String inputString){
         // 使用 File.separator 获取系统的路径分隔符
         String separator = File.separator;
         // 将点替换为路径分隔符

@@ -1,4 +1,4 @@
-package com.github.fantac;
+package com.github.fantac.parser;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -8,10 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 
-import com.github.fantac.parser.ParsedInfo;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -26,43 +24,56 @@ import com.github.javaparser.ast.expr.Expression;
  **/
 public class MethodExtractor {
     private String filePath;
+    private String className;
     private String methodName;
     private String sourcePath = "src/main/java";
     private String fullPath;
-    private List<ParsedInfo> infoList= new ArrayList<>();
+    private String fileExtension=".java";
+//    private List<ParsedInfo> infoList= new ArrayList<>();
 
 
-    public static void main(String[] args) throws IOException {
-        MethodExtractor extractor = new MethodExtractor("com/github/fantac/MethodExtractor.java","main");
-        extractor.methodBodyExtract();
-    }
+//    public static void main(String[] args) throws IOException {
+//        MethodExtractor extractor = new MethodExtractor("com/github/fantac/MethodExtractor.java","main");
+//        extractor.methodBodyExtract();
+//    }
 
-    public MethodExtractor(String filePath, String methodName) {
+    public MethodExtractor(String filePath,String className, String methodName) {
         this.filePath = filePath;
+        this.className = className;
         this.methodName = methodName;
-        this.fullPath = sourcePath + File.separator + filePath;
+        this.fullPath = sourcePath + File.separator + this.filePath+File.separator + this.className+fileExtension;
     }
 
-    public void methodBodyExtract() throws IOException {
+    public ParsedInfo methodBodyExtract() throws IOException {
         //获取分析单元cu
         FileInputStream in = new FileInputStream(fullPath);
         CompilationUnit cu = StaticJavaParser.parse(in);
+        ParsedInfo parsedInfo = new ParsedInfo();
         //获取被分析的包名
         String packageName = cu.getPackageDeclaration().get().getNameAsString();
             for (ClassOrInterfaceDeclaration coid : cu.findAll(ClassOrInterfaceDeclaration.class)) {
-                ParsedInfo parsedInfo = new ParsedInfo();
-                //获取名字为main的方法的签名+方法体
-                List<MethodDeclaration> targetMethod = coid.getMethodsByName(methodName);
-                String method = targetMethod.get(0).toString();
-                parsedInfo.setMethodName(methodName);
-                parsedInfo.setMethodBody(method);
-//                System.out.println(method);
-                //设置当前方法所在类的包声明
-                parsedInfo.setDeclaredPackage(packageName);
-                //设置当前类的类名
+                //获取类名
                 String className = coid.getName().asString();
+                //判断是否为目标类，防止一个文件中有多个类
+                if(!className.equals(this.className)){
+                    continue;
+                }
+                //设置目标函数所在类的类名
                 parsedInfo.setClassName(className);
 //                System.out.println("类名: " + className);
+
+                //获取名字为methodName的方法的签名+方法体
+                List<MethodDeclaration> targetMethod = coid.getMethodsByName(methodName);
+                String method = targetMethod.get(0).toString();
+                //设置方法名
+                parsedInfo.setMethodName(methodName);
+                //设置方法体
+                parsedInfo.setMethodBody(method);
+//                System.out.println(method);
+
+                //设置当前方法所在类的包声明
+                parsedInfo.setDeclaredPackage(packageName);
+
                 // 遍历并打印每个成员变量及其默认值（如果有的话）
                 for (FieldDeclaration field : coid.getFields()) {
                     //field转为字符串后以分号结尾，去掉分号，从"="号区分开，仅取得成员变量签名
@@ -71,12 +82,14 @@ public class MethodExtractor {
                         fieldSignature = fieldSignature.substring(0,fieldSignature.length()-1).split("=")[0].trim();
                     }
 //                    System.out.println(fieldSignature);
+
                     //获取field中的variable
                     for (VariableDeclarator variable : field.getVariables()) {
                         //获取初始值，有初始值则值设为初始值，没有初始值设为"noDefaultValue"
                         Optional<Expression> initializer = variable.getInitializer();
                         if (initializer.isPresent()) {
                             Object defaultFieldValue = initializer.get();
+                            //将成员变量名和初始值以键值对形式存储
                             parsedInfo.addDeclaredFieldMap(fieldSignature,defaultFieldValue);
 //                            System.out.println("，默认值: " + initializer.get());
                         } else {
@@ -85,13 +98,10 @@ public class MethodExtractor {
                         }
                     }
                 }
-                this.infoList.add(parsedInfo);
             }
-            for (ParsedInfo pi : infoList){
-                pi.displayParsedInfo();
-            }
-        }
+        return parsedInfo;
     }
+}
 
 
 //    private class FieldVisitor extends VoidVisitorAdapter<Void> {
