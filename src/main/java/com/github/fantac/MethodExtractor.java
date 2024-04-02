@@ -28,8 +28,9 @@ public class MethodExtractor {
     private String methodName;
     private String sourcePath = "src/main/java";
     private String fullPath;
-
     private List<ParsedInfo> infoList= new ArrayList<>();
+
+
     public static void main(String[] args) throws IOException {
         MethodExtractor extractor = new MethodExtractor("com/github/fantac/MethodExtractor.java","main");
         extractor.methodBodyExtract();
@@ -42,21 +43,24 @@ public class MethodExtractor {
     }
 
     public void methodBodyExtract() throws IOException {
+        //获取分析单元cu
         FileInputStream in = new FileInputStream(fullPath);
         CompilationUnit cu = StaticJavaParser.parse(in);
+        //获取被分析的包名
         String packageName = cu.getPackageDeclaration().toString();
             for (ClassOrInterfaceDeclaration coid : cu.findAll(ClassOrInterfaceDeclaration.class)) {
-                ParsedInfo info = new ParsedInfo();
-                List<MethodDeclaration> main = coid.getMethodsByName("main");
-                String method = main.get(0).toString();
-                //TODO 注意这里感觉还是把方法签名和方法体区分开比较好，回头试试
-                System.out.println(method);
-                info.setDeclaredPackage(packageName);
-                //存储当前被遍历的类的类名
+                ParsedInfo parsedInfo = new ParsedInfo();
+                //获取名字为main的方法的签名+方法体
+                List<MethodDeclaration> targetMethod = coid.getMethodsByName("main");
+                String method = targetMethod.get(0).toString();
+                parsedInfo.setMethodBody(method);
+//                System.out.println(method);
+                //设置当前方法所在类的包声明
+                parsedInfo.setDeclaredPackage(packageName);
+                //设置当前类的类名
                 String className = coid.getName().asString();
-                info.setClassName(className);
-
-                System.out.println("类名: " + className);
+                parsedInfo.setClassName(className);
+//                System.out.println("类名: " + className);
                 // 遍历并打印每个成员变量及其默认值（如果有的话）
                 for (FieldDeclaration field : coid.getFields()) {
                     //field转为字符串后以分号结尾，去掉分号
@@ -65,20 +69,21 @@ public class MethodExtractor {
                         fieldSignature = fieldSignature.substring(0,fieldSignature.length()-1);
                     }
                     System.out.println(fieldSignature);
+                    //获取field中的variable
                     for (VariableDeclarator variable : field.getVariables()) {
-                        //获取初始值
+                        //获取初始值，有初始值则值设为初始值，没有初始值设为"noDefaultValue"
                         Optional<Expression> initializer = variable.getInitializer();
                         if (initializer.isPresent()) {
                             Object defaultFieldValue = initializer.get();
-                            info.addDeclaredFieldMap(fieldSignature,defaultFieldValue);
+                            parsedInfo.addDeclaredFieldMap(fieldSignature,defaultFieldValue);
                             System.out.println("，默认值: " + initializer.get());
                         } else {
-                            info.addDeclaredFieldMap(fieldSignature,"noDefaultValue");
+                            parsedInfo.addDeclaredFieldMap(fieldSignature,"noDefaultValue");
                             System.out.println();  // 如果没有默认值，换行
                         }
                     }
                 }
-                this.infoList.add(info);
+                this.infoList.add(parsedInfo);
             }
         System.out.println(infoList);
         }
