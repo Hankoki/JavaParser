@@ -3,11 +3,11 @@ package com.github.fantac.parser;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 
+import com.github.fantac.utils.DataProcessUtil;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -44,7 +44,7 @@ public class MethodExtractor {
         this.fullPath = sourcePath + File.separator + this.filePath+File.separator + this.className+fileExtension;
     }
 
-    public ParsedInfo methodBodyExtract() throws IOException {
+    public ParsedInfo infoExtract() throws IOException {
         //获取分析单元cu
         FileInputStream in = new FileInputStream(fullPath);
         CompilationUnit cu = StaticJavaParser.parse(in);
@@ -101,7 +101,28 @@ public class MethodExtractor {
             }
         return parsedInfo;
     }
+
+    /**
+    * @description: 接收方法签名，抽取必要信息
+    * @param: [methodSignature]
+    * @return: com.github.fantac.parser.ParsedInfo
+    * @author: FantaC
+    * @date: 2024/4/2
+    */
+    public static ParsedInfo infoExtractWithSig(String methodSignature) throws IOException {
+        String[] signatureInfo = DataProcessUtil.extractClassAndMethod(methodSignature);
+        String packageName = signatureInfo[0];
+        String className = signatureInfo[1];
+        String methodName = signatureInfo[3];
+        String filePath = DataProcessUtil.pathSeparatorReplacer(packageName);
+        MethodExtractor extractor = new MethodExtractor(filePath,className,methodName);
+        ParsedInfo parsedInfo = extractor.infoExtract();
+        return parsedInfo;
+    }
+
+
 }
+
 
 
 //    private class FieldVisitor extends VoidVisitorAdapter<Void> {
